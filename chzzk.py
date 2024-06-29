@@ -2,6 +2,7 @@ import requests
 import json
 import asyncio
 import websockets
+import pandas as pd
     
 
 class Chzzk:
@@ -75,7 +76,7 @@ class Chat(Chzzk):
 
                         print(nickname + ' : ' + msg)
         
-bighead = 'ca1850b2eceb7f86146695fd9bb9cefc'
+live = '0b33823ac81de48d5b78a38cdbc0ab94'
 
-go = Chat(bighead)
+go = Chat(live)
 asyncio.get_event_loop().run_until_complete(go.connect())

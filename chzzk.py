@@ -3,6 +3,7 @@ import json
 import asyncio
 import websockets
 import pandas as pd
+from datetime import datetime
     
 
 class Chzzk:
@@ -15,10 +16,13 @@ class Chzzk:
         self.accessToken = ""
         self.extraToken = ""
 
+        self.nowTime = datetime.now()
+
     def getChannelInfo(self):
         try:
-            url = f'https://api.chzzk.naver.com/polling/v2/channels/{self.bjid}/live-status'
+            url = f'https://api.chzzk.naver.com/polling/v3/channels/{self.bjid}/live-status'
             self.channelId = self.session.get(url=url).json()['content']['chatChannelId']
+            print(f'channelId : {self.channelId}')
         except:
             print("channelId not found(getChannelInfo)")
 
@@ -63,20 +67,36 @@ class Chat(Chzzk):
             'ver':'3'
         }
 
+        self.chatting = []
+
     async def connect(self):
-        async with websockets.connect(self.socketUrl) as websocket:
+        async with websockets.connect(self.socketUrl, ping_interval=None) as websocket:
             await websocket.send(json.dumps(self.reqData))
-            while True:
+            while (datetime.now() - self.nowTime).seconds < 600:
+                if (datetime.now() - self.nowTime).seconds % 50 == 0:
+                    await websocket.send(json.dumps({'ver':"3", 'cmd':10000}))
+                    print("===============================================")
+
                 response = await websocket.recv()
                 response = json.loads(response)
+
                 if response['cmd'] == 93101:
                     for res in response['bdy']:
                         msg = res['msg']
                         nickname = json.loads(res['profile'])['nickname']
-
-                        print(nickname + ' : ' + msg)
+                        self.chatting.append([nickname, msg, datetime.now().strftime('%H:%M:%S')])
+                        print(nickname + ' : ' + msg + ' - ' + datetime.now().strftime('%H:%M:%S'))
         
-live = '0b33823ac81de48d5b78a38cdbc0ab94'
+live = '45e71a76e949e16a34764deb962f9d9f'
+now = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+
 
 go = Chat(live)
-asyncio.get_event_loop().run_until_complete(go.connect())
+crawling = asyncio.run(go.connect())
+# crawling.run_until_complete(go.connect())
+print("================================")
+print(pd.DataFrame(go.chatting).rename(columns={0:'nickname', 1:'msg', 2:'sendTime'}))
+
+response = pd.DataFrame(go.chatting).rename(columns={0:'nickname', 1:'msg', 2:'sendTime'})
+filename = f"data/{now}_{live}.csv"
+response.to_csv(filename)

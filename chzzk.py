@@ -72,7 +72,7 @@ class Chat(Chzzk):
     async def connect(self):
         async with websockets.connect(self.socketUrl, ping_interval=None) as websocket:
             await websocket.send(json.dumps(self.reqData))
-            while (datetime.now() - self.nowTime).seconds < 600:
+            while (datetime.now() - self.nowTime).seconds < 1800:
                 if (datetime.now() - self.nowTime).seconds % 50 == 0:
                     await websocket.send(json.dumps({'ver':"3", 'cmd':10000}))
                     print("===============================================")

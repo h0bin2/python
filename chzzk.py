@@ -3,7 +3,9 @@ import json
 import asyncio
 import websockets
 import pandas as pd
+
 from datetime import datetime
+from pytz import timezone
     
 
 class Chzzk:
@@ -16,7 +18,7 @@ class Chzzk:
         self.accessToken = ""
         self.extraToken = ""
 
-        self.nowTime = datetime.now()
+        self.nowTime = datetime.now(timezone('Asia/Seoul'))
 
     def getChannelInfo(self):
         try:
@@ -38,8 +40,6 @@ class Chzzk:
             print('Token not found(getToken)')
         
        
-#wss://kr-ss1.chat.naver.com/chat
-#
 class Chat(Chzzk):
     def __init__(self, bjid):
         super().__init__(bjid)
@@ -52,13 +52,6 @@ class Chat(Chzzk):
             'bdy':{
                 'accTkn':self.accessToken,
                 'auth':'READ',
-                'devName':'Google Chrome/109.0.0.0',
-                'devType':2001,
-                'libVer':'4.9.3',
-                'locale':'ko',
-                'osVer':'Linux/',
-                'timezone':'Asia/Seoul',
-                'uid':None
             },
             'cid':self.channelId,
             'cmd':100,
@@ -70,33 +63,36 @@ class Chat(Chzzk):
         self.chatting = []
 
     async def connect(self):
-        async with websockets.connect(self.socketUrl, ping_interval=None) as websocket:
+        async with websockets.connect(self.socketUrl, ping_interval=60) as websocket:
             await websocket.send(json.dumps(self.reqData))
-            while (datetime.now() - self.nowTime).seconds < 1800:
-                if (datetime.now() - self.nowTime).seconds % 50 == 0:
-                    await websocket.send(json.dumps({'ver':"3", 'cmd':10000}))
-                    print("===============================================")
+            while (datetime.now(timezone('Asia/Seoul')) - self.nowTime).seconds < 3600:
+                now = datetime.now(timezone('Asia/Seoul'))
 
                 response = await websocket.recv()
                 response = json.loads(response)
+
+                if response['cmd'] == 0:
+                    await websocket.send(json.dumps({'ver':"3", 'cmd':10000}))
+                    print("===============================================")
+                    continue
 
                 if response['cmd'] == 93101:
                     for res in response['bdy']:
                         msg = res['msg']
                         nickname = json.loads(res['profile'])['nickname']
-                        self.chatting.append([nickname, msg, datetime.now().strftime('%H:%M:%S')])
-                        print(nickname + ' : ' + msg + ' - ' + datetime.now().strftime('%H:%M:%S'))
-        
-live = '45e71a76e949e16a34764deb962f9d9f'
-now = datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+                        self.chatting.append([nickname, msg, now.strftime('%Y-%m-%d_%H:%M:%S')])
+                        print(nickname + ' : ' + msg + ' - ' + now.strftime('%Y-%m-%d_%H:%M:%S'))
+
+live = 'ec857bee6cded06df19dae85cf37f878' #유니
+now = datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-%d_%H:%M:%S')
 
 
 go = Chat(live)
-crawling = asyncio.run(go.connect())
-# crawling.run_until_complete(go.connect())
+asyncio.run(go.connect())
+
 print("================================")
 print(pd.DataFrame(go.chatting).rename(columns={0:'nickname', 1:'msg', 2:'sendTime'}))
 
 response = pd.DataFrame(go.chatting).rename(columns={0:'nickname', 1:'msg', 2:'sendTime'})
-filename = f"data/{now}_{live}.csv"
-response.to_csv(filename)
+filename = f"python/data/{now}_{live}.csv"
+response.to_csv(filename, index=False)

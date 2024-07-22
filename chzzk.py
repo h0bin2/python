@@ -65,7 +65,8 @@ class Chat(Chzzk):
     async def connect(self):
         async with websockets.connect(self.socketUrl, ping_interval=60) as websocket:
             await websocket.send(json.dumps(self.reqData))
-            while (datetime.now(timezone('Asia/Seoul')) - self.nowTime).seconds < 3600:
+            #(datetime.now(timezone('Asia/Seoul')) - self.nowTime).seconds < 3600:
+            while True:
                 now = datetime.now(timezone('Asia/Seoul'))
 
                 response = await websocket.recv()
@@ -83,12 +84,13 @@ class Chat(Chzzk):
                         self.chatting.append([nickname, msg, now.strftime('%Y-%m-%d_%H:%M:%S')])
                         print(nickname + ' : ' + msg + ' - ' + now.strftime('%Y-%m-%d_%H:%M:%S'))
 
-live = 'ec857bee6cded06df19dae85cf37f878' #유니
+live = '75cbf189b3bb8f9f687d2aca0d0a382b' #한동숙
 now = datetime.now(timezone('Asia/Seoul')).strftime('%Y-%m-%d_%H:%M:%S')
 
 
 go = Chat(live)
-asyncio.run(go.connect())
+asyncio.get_event_loop().run_until_complete(go.connect())
+#asyncio.run(go.connect())
 
 print("================================")
 print(pd.DataFrame(go.chatting).rename(columns={0:'nickname', 1:'msg', 2:'sendTime'}))
